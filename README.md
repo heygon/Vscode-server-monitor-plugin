@@ -1,71 +1,71 @@
 <h1 align="center">Server Monitor for VS Code (Uptime Kuma Inspired)</h1>
 
 <p align="center">
-  <strong>O plugin definitivo para monitoramento de saúde de servidores, APIs e URLs HTTP/HTTPS em tempo real direto do seu editor!</strong>
+   <strong>The ultimate plugin for real-time health monitoring of servers, APIs, and HTTP/HTTPS URLs right inside your editor!</strong>
 </p>
 
-## 🚀 Sobre o Projeto
-O **Server Monitor** transforma seu Visual Studio Code em uma poderosa torre de controle no melhor estilo Uptime Kuma. Sem precisar sair do seu ambiente de desenvolvimento ou abrir o navegador, você pode diagnosticar a conectividade, saúde de certificados SSL, tempos exatos de roteamento de pacotes (TTFB, DNS, TCP) e histórico completo de falhas ou instabilidade.
+## 🚀 About the Project
+**Server Monitor** turns your Visual Studio Code into a powerful control tower in true Uptime Kuma style. Without leaving your development environment or opening a browser, you can diagnose connectivity, SSL certificate health, precise packet routing timings (TTFB, DNS, TCP), and a complete history of failures or instability.
 
 ---
 
-## ✨ Funcionalidades Principais
-* **Dashboard em Grade Responsiva**: Visão simultânea de todos os sites hospedados usando componentes nativos do _VS Code_ (`@vscode/webview-ui-toolkit`).
-* **Monitoramento em Segundo Plano Worker**: Seus servidores são testados mesmo quando a interface do Webview está fechada, notificando nativamente você na Aba de Alertas do VS Code caso qualquer serviço caia.
-* **Barra de Histórico de Disponibilidade**: A famosa "linha do tempo do GitHub" (History Bar) armazenando até as 60 últimas batidas com status de variação (Verde, Laranja e Vermelho).
-* **Gráficos de Sparkline**: Gráfico em Linhas exibindo as oscilações da latência das verificações passadas usando *Chart.js*.
-* **Status Bar System**: Na barra inferor nativa do VS Code, ícone acompanhando e denunciando total de sites "foras do ar" em instantes críticos.
+## ✨ Key Features
+* **Responsive Grid Dashboard**: Simultaneous view of all hosted sites using native _VS Code_ components (`@vscode/webview-ui-toolkit`).
+* **Background Worker Monitoring**: Your servers are tested even when the Webview interface is closed, with native notifications in the VS Code Alerts tab if any service goes down.
+* **Availability History Bar**: The well-known "GitHub timeline" style (History Bar), storing up to the last 60 checks with variation status (Green, Orange, and Red).
+* **Sparkline Charts**: Line charts showing latency fluctuations from previous checks using *Chart.js*.
+* **Status Bar System**: In VS Code's native bottom bar, an icon tracks and reports the total number of sites that are down during critical moments.
 
-## 📊 10 Métricas de Telemetria Fina
-Diferente dos testes comuns de `"Ping (Online/Offline)"`, esta extensão mede detalhadamente o clico de resposta subjacente:
+## 📊 10 Fine-Grained Telemetry Metrics
+Unlike basic `"Ping (Online/Offline)"` checks, this extension measures the underlying response cycle in detail:
 1. **Status Code HTTP** (200, 404, 500, etc)
-2. **DNS Lookup Time** (Roteamento do provedor)
-3. **TCP Connection Time** (Handshake TPC)
-4. **SSL/TLS Handshake** (Agilidade de negociação segura)
-5. **Time to First Byte (TTFB)** (Agilidade de processamento do backend)
-6. **Total Response Time / Latência** (Tempo integral)
-7. **Content Length** (Tamanho final processado da tag/corpo)
-8. **Expiração do Certificado SSL** (Dias remanescentes para renovação do seu HTTPS)
-9. **Contagem de Quedas** (Down Count)
-10. **Redirecionamentos** (Detecção baseada no code 3xx)
+2. **DNS Lookup Time** (Provider routing resolution)
+3. **TCP Connection Time** (TCP handshake)
+4. **SSL/TLS Handshake** (Secure negotiation speed)
+5. **Time to First Byte (TTFB)** (Backend processing speed)
+6. **Total Response Time / Latency** (End-to-end duration)
+7. **Content Length** (Final processed body size)
+8. **SSL Certificate Expiration** (Remaining days before HTTPS renewal)
+9. **Downtime Count** (Down Count)
+10. **Redirects** (3xx-based detection)
 
 ---
 
-## 💻 Como Usar (Instruções de Instalação)
+## 💻 How to Use (Installation Instructions)
 
-### Instalando Localmente (Via VSCE Package)
-1. Certifique-se de que possui o `vsce` instalado no seu Node.js:
-   \`\`\`bash
+### Local Installation (Via VSCE Package)
+1. Make sure you have `vsce` installed in your Node.js environment:
+   ```bash
    npm install -g @vscode/vsce
-   \`\`\`
-2. Navegue até o diretório do projeto clonado pelo terminal e gere o executável (VSIX):
-   \`\`\`bash
+   ```
+2. Navigate to the cloned project directory in your terminal and generate the package (VSIX):
+   ```bash
    vsce package --no-yarn
-   \`\`\`
-3. Isso vai gerar um arquivo \`.vsix\` final na sua pasta.
-4. No VS Code, vá na barra lateral de **Extensions**, clique nos três pontinhos `...` no canto superior e selecione **"Install from VSIX..."**. Localize seu gerado e pronto!
+   ```
+3. This generates a final `.vsix` file in your folder.
+4. In VS Code, open the **Extensions** sidebar, click the three dots `...` in the top corner, and select **"Install from VSIX..."**. Locate the generated file and you are done.
 
-### Usando:
-1. Pressione \`Ctrl+Shift+P\` (ou \`Cmd+Shift+P\` no Mac).
-2. Procure por: \`Server Monitor: Open Dashboard\` e aperte enter!
-3. Digite suas URLs que deseja monitorar e deixe a extensão fazer o resto.
-
----
-
-## ⚙️ Configurações Expostas (Workspace / Settings.json)
-Você pode ir nas Configurações da Extensão pelo editor para personalizar como o ícone raiz age na Status Bar do VS Code:
-- \`serverMonitor.dashboard.text\`: "Servidores"
-- \`serverMonitor.dashboard.tooltip\`: "Acesse seu painel online/offline"
-- \`serverMonitor.dashboard.icon\`: "⚡"
+### Usage
+1. Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac).
+2. Search for `Server Monitor: Open Dashboard` and press Enter.
+3. Enter the URLs you want to monitor and let the extension do the rest.
 
 ---
 
-## 💡 Estrutura de Diretórios para DevOps / Futuros Contribuidores
-A extensão foi construída em TypeScript sob alta modularidade visando integrações futuras:
-- \`src/monitors/HttpMonitor.ts\` (Possui a mágica dos sockets nativos TLS/HTTP Node.js).
-- \`src/monitors/MonitorManager.ts\` (Sincroniza o \`globalState\` e rege o garbage collector limitando a 60 históricos).
-- \`src/interface/\` (Contém nossos scripts Front-end em Vanilla JS super veloz e as injeções nativas de CSS Themes).
+## ⚙️ Exposed Settings (Workspace / Settings.json)
+You can open the extension settings in the editor to customize how the root icon behaves in the VS Code Status Bar:
+- `serverMonitor.dashboard.text`: "Servers"
+- `serverMonitor.dashboard.tooltip`: "Access your online/offline dashboard"
+- `serverMonitor.dashboard.icon`: "⚡"
+
+---
+
+## 💡 Directory Structure for DevOps / Future Contributors
+The extension was built in TypeScript with high modularity to support future integrations:
+- `src/monitors/HttpMonitor.ts` (Contains the native Node.js TLS/HTTP socket logic).
+- `src/monitors/MonitorManager.ts` (Synchronizes `globalState` and manages cleanup, limiting history to 60 entries).
+- `src/interface/` (Contains high-performance Vanilla JS front-end scripts and native CSS theme injections).
 
 </br>
 
-*[MIT License] - Construído visando performance absoluta sem engines gigantes de build front-end embutidas na IDE.*
+*[MIT License] - Built for maximum performance without heavy front-end build engines embedded in the IDE.*
