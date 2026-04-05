@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as crypto from "crypto";
 import { createInterface } from "./interface";
 import { MonitorManager } from "./monitors/MonitorManager";
 import { SshMonitor } from "./monitors/SshMonitor";
@@ -151,7 +152,7 @@ function openDashboardWebview(context: vscode.ExtensionContext) {
         case 'addSshServer': {
           const { label, host, port, username, password } = message;
           if (!host || !username || !password) { break; }
-          const id = `ssh-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const id = `ssh-${Date.now().toString(36)}-${crypto.randomBytes(8).toString('hex')}`;
           const config: SshServerConfig = {
             id,
             label: (label as string) || host,

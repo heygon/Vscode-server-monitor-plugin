@@ -1,26 +1,30 @@
 import { Client, ClientChannel } from 'ssh2';
 import { SshServerConfig, SshConnectionStatus, SshServerMetrics } from './types';
 
-// Shell command executed on the remote host to collect all metrics.
-// Output lines are prefixed with a marker token for reliable parsing.
-// CPU: two /proc/stat reads 0.5 s apart → CPU delta.
-// MEM: /proc/meminfo (values in kB).
-// DISK: df -B1, only real block-device mount-points (/dev/...).
-// PROC: ps aux sorted by CPU, top 10 processes.
-// ENERGY: Intel RAPL power_uw file (Linux only, optional).
-const METRICS_CMD =
-  "S1=$(awk 'NR==1{s=0;for(i=2;i<=NF;i++)s+=$i;print s,$5}' /proc/stat 2>/dev/null); " +
-  "sleep 0.5; " +
-  "S2=$(awk 'NR==1{s=0;for(i=2;i<=NF;i++)s+=$i;print s,$5}' /proc/stat 2>/dev/null); " +
-  'echo "CPU $S1 | $S2"; ' +
+// Shell command executed on the remote host to collect all metrics at once.
+// Each output line is prefixed with a unique marker for reliable parsing:
+//   CPU  <total1> <idle1> | <total2> <idle2>   (two /proc/stat reads 0.5 s apart)
+//   MEM  <totalKB> <freeKB> <availKB>           (/proc/meminfo)
+//   DISK <device> <totalB> <usedB> <mountpoint> (df -B1, /dev/* only)
+//   PROC|<user>|<pid>|<cpu%>|<mem%>|<cmd>       (ps aux, top 10 by CPU)
+//   ENERGY <N.NNW>|N/A                           (Intel RAPL power_uw, optional)
+const METRICS_CMD = [
+  "S1=$(awk 'NR==1{s=0;for(i=2;i<=NF;i++)s+=$i;print s,$5}' /proc/stat 2>/dev/null)",
+  "sleep 0.5",
+  "S2=$(awk 'NR==1{s=0;for(i=2;i<=NF;i++)s+=$i;print s,$5}' /proc/stat 2>/dev/null)",
+  'echo "CPU $S1 | $S2"',
   "awk '/^MemTotal:/{t=$2}/^MemFree:/{f=$2}/^MemAvailable:/{a=$2}" +
-    "END{if(t)print \"MEM\",t,f,(a?a:f)}' /proc/meminfo 2>/dev/null; " +
-  "df -B1 2>/dev/null | awk 'NR>1 && $1~/^\\/dev\\// {print \"DISK\",$1,$2,$3,$6}'; " +
+    "END{if(t)print \"MEM\",t,f,(a?a:f)}' /proc/meminfo 2>/dev/null",
+  "df -B1 2>/dev/null | awk 'NR>1 && $1~/^\\/dev\\// {print \"DISK\",$1,$2,$3,$6}'",
   "ps aux --sort=-%cpu 2>/dev/null | " +
     "awk 'NR>1&&NR<=11{cmd=\"\";for(i=11;i<=NF;i++)cmd=cmd\" \"$i;" +
-    "gsub(/[|]/,\"_\",cmd);printf \"PROC|%s|%s|%s|%s|%s\\n\",$1,$2,$3,$4,substr(cmd,2,50)}'; " +
+    "gsub(/[|]/,\"_\",cmd);printf \"PROC|%s|%s|%s|%s|%s\\n\",$1,$2,$3,$4,substr(cmd,2,50)}'",
   "(cat /sys/class/powercap/intel-rapl:0/power_uw 2>/dev/null | " +
-    "awk '{printf \"ENERGY %.2fW\\n\",$1/1000000}') 2>/dev/null || echo 'ENERGY N/A'";
+    "awk '{printf \"ENERGY %.2fW\\n\",$1/1000000}') 2>/dev/null || echo 'ENERGY N/A'",
+].join("; ");
+
+/** Timeout for a single remote command execution (ms). */
+const COMMAND_TIMEOUT_MS = 12000;
 
 interface ConnectionEntry {
   client: Client;
@@ -145,7 +149,7 @@ export class SshMonitor {
 
   private _execCommand(client: Client, command: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('Command timed out')), 12000);
+      const timer = setTimeout(() => reject(new Error('Command timed out')), COMMAND_TIMEOUT_MS);
 
       client.exec(command, (err, stream: ClientChannel) => {
         if (err) {

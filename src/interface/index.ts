@@ -314,7 +314,7 @@ export function createInterface(): string {
               var valueRef = { value: pct, color: color };
 
               var centerPlugin = {
-                  id: 'cp_' + canvasId.replace(/[^a-z0-9]/gi, '_'),
+                  id: 'centerText_' + canvasId.replace(/[^a-z0-9]/gi, '_'),
                   afterDraw: function(chart) {
                       var ca = chart.chartArea;
                       if (!ca) return;
