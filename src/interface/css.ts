@@ -333,6 +333,222 @@ export function Css(): string {
             font-size: 18px;
             font-weight: 500;
         }
+
+        /* ── Tab Navigation ───────────────────────────────────────────── */
+        .tab-nav {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 28px;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 0;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--muted);
+            cursor: pointer;
+            font-family: var(--vscode-font-family);
+            font-size: 13px;
+            font-weight: 600;
+            padding: 8px 16px;
+            margin-bottom: -1px;
+            transition: var(--transition);
+        }
+
+        .tab-btn:hover { color: var(--fg-color); }
+
+        .tab-btn.active {
+            color: var(--fg-color);
+            border-bottom-color: var(--vscode-button-background, #0e639c);
+        }
+
+        /* ── SSH View ─────────────────────────────────────────────────── */
+        .ssh-add-form {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            margin-bottom: 28px;
+            box-shadow: var(--shadow);
+        }
+
+        .ssh-form-title {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            margin: 0 0 14px;
+        }
+
+        .ssh-form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        .ssh-form-row vscode-text-field {
+            flex: 1 1 160px;
+        }
+
+        /* SSH server cards grid */
+        .ssh-cards-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .ssh-server-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: var(--transition);
+        }
+
+        .ssh-server-card:hover {
+            border-color: var(--card-hover-border);
+            box-shadow: var(--shadow);
+        }
+
+        /* Card header */
+        .ssh-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+        }
+
+        .ssh-title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .ssh-server-name {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .ssh-server-host {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .ssh-status-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 20px;
+            text-transform: uppercase;
+        }
+
+        .ssh-status-badge.connected   { background: rgba(16,185,129,0.15); color: var(--success); }
+        .ssh-status-badge.connecting  { background: rgba(245,158,11,0.15);  color: var(--pending); }
+        .ssh-status-badge.error,
+        .ssh-status-badge.disconnected{ background: rgba(239,68,68,0.15);   color: var(--danger);  }
+
+        .ssh-error-msg, .ssh-connecting-msg {
+            font-size: 13px;
+            padding: 8px 12px;
+            border-radius: var(--radius-md);
+            margin-bottom: 14px;
+        }
+
+        .ssh-error-msg       { background: rgba(239,68,68,0.1);   color: var(--danger);  }
+        .ssh-connecting-msg  { background: rgba(245,158,11,0.1);  color: var(--pending); }
+
+        /* Donut gauges row */
+        .ssh-gauges-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .gauge-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            min-width: 110px;
+        }
+
+        .gauge-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--muted);
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .gauge-label small { font-weight: 400; display: block; }
+
+        .energy-info {
+            justify-content: center;
+            padding: 10px 14px;
+            background: rgba(245,158,11,0.08);
+            border: 1px solid rgba(245,158,11,0.25);
+            border-radius: var(--radius-md);
+        }
+
+        .energy-icon { font-size: 28px; line-height: 1; }
+
+        /* Process table */
+        .ssh-procs-section { margin-top: 4px; }
+
+        .ssh-section-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .proc-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .proc-table th {
+            text-align: left;
+            color: var(--muted);
+            font-weight: 600;
+            padding: 4px 8px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .proc-table td {
+            padding: 4px 8px;
+            border-bottom: 1px solid rgba(128,128,128,0.08);
+        }
+
+        .proc-table tr:last-child td { border-bottom: none; }
+
+        .proc-table tr:hover td { background: rgba(128,128,128,0.05); }
+
+        .proc-cmd { color: var(--muted); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        td.high-usage { color: var(--danger);  font-weight: 700; }
+        td.mid-usage  { color: var(--pending); font-weight: 600; }
+
+        .ssh-updated-at {
+            font-size: 11px;
+            color: var(--muted);
+            text-align: right;
+            margin-top: 14px;
+            opacity: 0.7;
+        }
     </style>
     `;
 }

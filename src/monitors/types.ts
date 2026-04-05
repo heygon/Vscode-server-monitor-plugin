@@ -42,3 +42,46 @@ export interface IMonitor {
    */
   ping(server: ServerInfo): Promise<PingData>;
 }
+
+// ─── SSH Monitoring ───────────────────────────────────────────────────────────
+
+export interface SshServerConfig {
+  id: string;
+  label: string;
+  host: string;
+  port: number;
+  username: string;
+}
+
+export type SshConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+
+export interface SshServerMetrics {
+  id: string;
+  config: SshServerConfig;
+  status: SshConnectionStatus;
+  errorMessage?: string;
+  cpu?: {
+    usagePercent: number;
+  };
+  ram?: {
+    totalBytes: number;
+    usedBytes: number;
+    usagePercent: number;
+  };
+  disks?: Array<{
+    device: string;
+    mountpoint: string;
+    totalBytes: number;
+    usedBytes: number;
+    usagePercent: number;
+  }>;
+  processes?: Array<{
+    pid: number;
+    user: string;
+    cpuPercent: number;
+    memPercent: number;
+    command: string;
+  }>;
+  energy?: string;
+  timestamp?: number;
+}
