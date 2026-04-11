@@ -463,6 +463,26 @@ export function Css(): string {
         .ssh-error-msg       { background: rgba(239,68,68,0.1);   color: var(--danger);  }
         .ssh-connecting-msg  { background: rgba(245,158,11,0.1);  color: var(--pending); }
 
+        .ssh-loading-metrics {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--muted);
+            padding: 16px 4px;
+        }
+        .ssh-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.15);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            flex-shrink: 0;
+            animation: ssh-spin 0.8s linear infinite;
+        }
+        @keyframes ssh-spin { to { transform: rotate(360deg); } }
+
         /* Donut gauges row */
         .ssh-gauges-row {
             display: flex;
@@ -500,6 +520,241 @@ export function Css(): string {
         }
 
         .energy-icon { font-size: 28px; line-height: 1; }
+
+        .ssh-network-row {
+            display: flex;
+            gap: 10px;
+            margin-top: -4px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .ssh-network-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--card-border);
+            background: rgba(128,128,128,0.08);
+            font-size: 12px;
+        }
+
+        .ssh-network-pill strong {
+            color: var(--fg);
+            font-size: 12px;
+        }
+
+        .net-label {
+            color: var(--muted);
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.04em;
+        }
+
+        .net-arrow {
+            font-weight: 700;
+            font-size: 13px;
+            width: 14px;
+            text-align: center;
+        }
+
+        .net-arrow.down { color: var(--success); }
+        .net-arrow.up { color: var(--pending); }
+
+        .ssh-docker-section { margin-bottom: 14px; }
+
+        .ssh-docker-empty {
+            font-size: 12px;
+            color: var(--muted);
+            padding: 10px 0;
+        }
+
+        .docker-table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-md);
+        }
+
+        .docker-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1320px;
+            table-layout: fixed;
+            font-size: 12px;
+        }
+
+        .docker-table th:nth-child(1), .docker-table td:nth-child(1) { width: 150px; }
+        .docker-table th:nth-child(2), .docker-table td:nth-child(2) { width: 150px; }
+        .docker-table th:nth-child(3), .docker-table td:nth-child(3) { width: 170px; }
+        .docker-table th:nth-child(4), .docker-table td:nth-child(4) { width: 110px; }
+
+        .docker-table th:nth-child(5), .docker-table td:nth-child(5) { width: 180px; }
+        .docker-table th:nth-child(6), .docker-table td:nth-child(6) { width: 80px; }
+        .docker-table th:nth-child(7), .docker-table td:nth-child(7) { width: 150px; }
+        .docker-table th:nth-child(8), .docker-table td:nth-child(8) { width: 150px; }
+        .docker-table th:nth-child(9), .docker-table td:nth-child(9) { width: 170px; }
+        .docker-table th:nth-child(10), .docker-table td:nth-child(10) { width: 140px; }
+
+        .docker-table th,
+        .docker-table td {
+            padding: 8px;
+            border-bottom: 1px solid rgba(128,128,128,0.08);
+            vertical-align: top;
+        }
+
+        .docker-table th {
+            text-align: left;
+            color: var(--muted);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            background: var(--bg-elev-1);
+        }
+
+        .docker-table tbody tr:hover td {
+            background: rgba(128,128,128,0.06);
+        }
+
+        .docker-name {
+            font-weight: 600;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .docker-id,
+        .docker-sub,
+        .docker-size {
+            color: var(--muted);
+            font-size: 11px;
+            margin-top: 3px;
+        }
+
+        .docker-image,
+        .docker-ports {
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .docker-status {
+            display: inline-flex;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .docker-status.running { background: rgba(16,185,129,0.15); color: var(--success); }
+        .docker-status.paused  { background: rgba(245,158,11,0.15); color: var(--pending); }
+        .docker-status.stopped { background: rgba(239,68,68,0.15); color: var(--danger); }
+
+        .docker-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .docker-btn {
+            border: 1px solid var(--card-border);
+            background: var(--bg-elev-2);
+            color: var(--fg);
+            border-radius: 6px;
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .docker-btn svg {
+            width: 16px;
+            height: 16px;
+            display: block;
+            fill: currentColor;
+            stroke: none;
+        }
+
+        .docker-btn:hover { filter: brightness(1.1); }
+
+        .docker-btn.danger {
+            border-color: rgba(239,68,68,0.4);
+            color: var(--danger);
+        }
+
+        .docker-diag-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .docker-diag-toolbar #docker-summary {
+            flex: 1;
+            min-width: 280px;
+        }
+
+        .docker-diag-panel {
+            margin-top: 10px;
+        }
+
+        .docker-diag-results {
+            display: grid;
+            gap: 8px;
+        }
+
+        .docker-diag-item {
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-md);
+            background: var(--bg-elev-1);
+            overflow: hidden;
+        }
+
+        .docker-diag-item summary {
+            cursor: pointer;
+            list-style: none;
+            padding: 9px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .docker-diag-item summary::-webkit-details-marker { display: none; }
+
+        .docker-diag-badge {
+            display: inline-flex;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+
+        .docker-diag-badge.ok { background: rgba(16,185,129,0.18); color: var(--success); }
+        .docker-diag-badge.err { background: rgba(239,68,68,0.18); color: var(--danger); }
+
+        .docker-diag-item pre {
+            margin: 0;
+            padding: 10px 12px;
+            border-top: 1px solid var(--card-border);
+            background: var(--bg);
+            max-height: 320px;
+            overflow: auto;
+            font-size: 11px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
 
         /* Process table */
         .ssh-procs-section { margin-top: 4px; }
@@ -548,6 +803,18 @@ export function Css(): string {
             text-align: right;
             margin-top: 14px;
             opacity: 0.7;
+        }
+
+
+        .td-docker{
+            width:100px !important;
+            word-wrap: break-word;
+        }
+        .docker-name{
+            font-size: 13px !important;
+        }
+        .docker-id{
+            font-size: 10px !important;
         }
     </style>
     `;

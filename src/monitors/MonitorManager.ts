@@ -90,9 +90,6 @@ export class MonitorManager {
 
         if (newStatus === 'offline' && oldStatus !== 'offline') {
           server.downCount = (server.downCount || 0) + 1;
-          vscode.window.showErrorMessage(`O serviço ${server.url} caiu!`);
-        } else if (newStatus === 'online' && oldStatus === 'offline') {
-           vscode.window.showInformationMessage(`O serviço ${server.url} voltou a ficar online.`);
         }
         
         if (oldStatus !== newStatus) {

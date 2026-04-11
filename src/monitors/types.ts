@@ -51,9 +51,30 @@ export interface SshServerConfig {
   host: string;
   port: number;
   username: string;
+  osType?: 'linux' | 'windows';
 }
 
 export type SshConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+
+export type DockerContainerAction = 'stop' | 'pause' | 'play' | 'recreate';
+
+export interface DockerContainerMetrics {
+  id: string;
+  name: string;
+  image: string;
+  status: string;
+  ports: string;
+  size?: string;
+  cpuPercent?: number;
+  memoryUsageBytes?: number;
+  memoryLimitBytes?: number;
+  memoryPercent?: number;
+  networkRxBytes?: number;
+  networkTxBytes?: number;
+  blockReadBytes?: number;
+  blockWriteBytes?: number;
+  pids?: number;
+}
 
 export interface SshServerMetrics {
   id: string;
@@ -62,6 +83,10 @@ export interface SshServerMetrics {
   errorMessage?: string;
   cpu?: {
     usagePercent: number;
+  };
+  network?: {
+    downloadBytesPerSec: number;
+    uploadBytesPerSec: number;
   };
   ram?: {
     totalBytes: number;
@@ -83,5 +108,10 @@ export interface SshServerMetrics {
     command: string;
   }>;
   energy?: string;
+  docker?: {
+    available: boolean;
+    errorMessage?: string;
+    containers: DockerContainerMetrics[];
+  };
   timestamp?: number;
 }

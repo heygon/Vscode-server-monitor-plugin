@@ -2,7 +2,7 @@
 	"name": "server-monitor",
 	"displayName": "Server Monitor",
 	"description": "Adicione e monitore seus servidores dentro do VsCode.",
-	"version": "1.0.1",
+	"version": "1.0.103",
 	"publisher": "HeygonLago",
 	"author": {
 		"name": "Heygon Lago",
@@ -12,10 +12,10 @@
 		"vscode": "^1.49.0"
 	},
 	"license": "MIT",
-	"homepage": "https://github.com/EduardoPires/vscode-status-bar-custom-item",
+	"homepage": "https://github.com/HeygonLago/vscode-server-monitor",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/EduardoPires/vscode-status-bar-custom-item.git"
+		"url": "https://github.com/HeygonLago/vscode-server-monitor.git"
 	},
 	"categories": [
 		"Other"
