@@ -3,6 +3,7 @@ import * as crypto from "crypto";
 import { createInterface } from "./interface";
 import { MonitorManager } from "./monitors/MonitorManager";
 import { SshMonitor } from "./monitors/SshMonitor";
+import { SshPseudoterminal } from "./monitors/SshTerminal";
 import { DockerContainerAction, SshServerConfig } from "./monitors/types";
 
 let myStatusBarItem: vscode.StatusBarItem;
@@ -306,6 +307,86 @@ function openDashboardWebview(context: vscode.ExtensionContext) {
             type: 'dockerDiagnosticsResult',
             results,
           });
+          break;
+        }
+
+        case 'openSshTerminal': {
+          const { serverId } = message as { serverId: string };
+          if (!serverId) { break; }
+
+          const config = getSshConfigs(context).find((c) => c.id === serverId);
+          if (!config) {
+            vscode.window.showWarningMessage('Servidor SSH não encontrado para abrir terminal.');
+            break;
+          }
+
+          const password = await context.secrets.get(`ssh.password.${config.id}`);
+          if (!password) {
+            vscode.window.showWarningMessage('Senha SSH não encontrada. Reconecte o host para abrir o terminal.');
+            break;
+          }
+
+          const terminal = vscode.window.createTerminal({
+            name: `SSH ${config.label || config.host}`,
+            pty: new SshPseudoterminal(config, password),
+          });
+          terminal.show();
+          break;
+        }
+        case 'requestContainerLogs': {
+          const { serverId, containerId, tail } = message as { serverId: string; containerId: string; tail?: number };
+          if (!serverId || !containerId) break;
+          const config = getSshConfigs(context).find((c) => c.id === serverId);
+          if (!config) break;
+          try {
+            await sshMonitor.startContainerLogs(config, containerId, tail || 200, (chunk) => {
+              activePanel?.webview.postMessage({ type: 'containerLogsChunk', serverId, containerId, chunk });
+            }, () => {
+              activePanel?.webview.postMessage({ type: 'containerLogsEnd', serverId, containerId });
+            });
+          } catch (err: any) {
+            activePanel?.webview.postMessage({ type: 'containerLogsChunk', serverId, containerId, chunk: `ERROR: ${err?.message || 'failed to start logs'}\n` });
+            activePanel?.webview.postMessage({ type: 'containerLogsEnd', serverId, containerId });
+          }
+          break;
+        }
+
+        case 'stopContainerLogs': {
+          const { serverId, containerId } = message as { serverId: string; containerId: string };
+          if (!serverId || !containerId) break;
+          try { sshMonitor.stopContainerLogs(serverId, containerId); } catch (_) { }
+          break;
+        }
+
+        case 'startContainerTerminal': {
+          const { serverId, containerId } = message as { serverId: string; containerId: string };
+          if (!serverId || !containerId) break;
+          const config = getSshConfigs(context).find((c) => c.id === serverId);
+          if (!config) break;
+          try {
+            await sshMonitor.startContainerTerminal(config, containerId, (data) => {
+              activePanel?.webview.postMessage({ type: 'containerTerminalData', data });
+            }, () => {
+              activePanel?.webview.postMessage({ type: 'containerTerminalClosed', serverId, containerId });
+            });
+          } catch (err: any) {
+            activePanel?.webview.postMessage({ type: 'containerTerminalData', data: `ERROR: ${err?.message || 'failed to start terminal'}\n` });
+            activePanel?.webview.postMessage({ type: 'containerTerminalClosed', serverId, containerId });
+          }
+          break;
+        }
+
+        case 'stopContainerTerminal': {
+          const { serverId, containerId } = message as { serverId: string; containerId: string };
+          if (!serverId || !containerId) break;
+          try { sshMonitor.stopContainerTerminal(serverId, containerId); } catch (_) { }
+          break;
+        }
+
+        case 'containerTerminalInput': {
+          const { serverId, containerId, data } = message as { serverId: string; containerId: string; data: string };
+          if (!serverId || !containerId || typeof data !== 'string') break;
+          try { sshMonitor.writeContainerTerminalInput(serverId, containerId, data); } catch (_) { }
           break;
         }
       }

@@ -1,113 +1,4 @@
-import { Css } from "./css";
 
-export function createInterface(): string {
-  return `
-  <!DOCTYPE html>
-  <html lang="pt-BR">
-  <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Server Monitor Dashboard</title>
-      <script type="module" src="https://cdn.jsdelivr.net/npm/@vscode/webview-ui-toolkit/dist/toolkit.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
-    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
-    ${Css()}
-  </head>
-  <body>
-
-      <!-- TAB NAVIGATION -->
-      <nav class="tab-nav">
-          <button class="tab-btn active" id="tab-http">🌐 Sites HTTP</button>
-          <button class="tab-btn"        id="tab-ssh">💻 Servidores SSH</button>
-          <button class="tab-btn"        id="tab-docker">🐳 Containers Docker</button>
-      </nav>
-
-      <!-- VIEW: HTTP DASHBOARD -->
-      <div id="view-dashboard" class="view-section active">
-          <header class="global-header">
-              <div class="summary-stats">
-                  <div class="stat-item">
-                      <span class="stat-label">Total de Sites</span>
-                      <span class="stat-value" id="stat-total">0</span>
-                  </div>
-                  <div class="stat-item">
-                      <span class="stat-label">Online</span>
-                      <span class="stat-value online" id="stat-online">0</span>
-                  </div>
-                  <div class="stat-item">
-                      <span class="stat-label">Offline</span>
-                      <span class="stat-value offline" id="stat-offline">0</span>
-                  </div>
-              </div>
-              <div class="actions-group">
-                  <vscode-text-field type="url" id="serverUrl" placeholder="https://seudominio.com" style="min-width: 250px;"></vscode-text-field>
-                  <vscode-button appearance="primary" id="btn-add-server">Adicionar Novo Site</vscode-button>
-              </div>
-          </header>
-          <main class="cards-grid" id="cards-container"></main>
-      </div>
-
-      <!-- VIEW: HTTP SERVER DETAILS -->
-      <div id="view-server" class="view-section">
-          <vscode-button appearance="secondary" class="btn-back" id="btn-back" style="margin-bottom: 24px;">&#8592; Voltar ao Dashboard</vscode-button>
-          <header style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
-              <div style="display: flex; align-items: center; gap: 12px;">
-                  <div class="status-dot" id="detail-dot"></div>
-                  <h2 id="detail-title" style="margin: 0; font-size: 24px; font-weight: 600;">URL</h2>
-              </div>
-              <vscode-button appearance="secondary" id="detail-delete" style="background: var(--danger); color: white; border: none;">Deletar Servidor</vscode-button>
-          </header>
-          <div style="height: 250px; width: 100%; margin-bottom: 24px;"><canvas id="detailChart"></canvas></div>
-          <h3 style="margin-bottom: 8px; font-size: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 8px;">Hist&#243;rico (&#218;ltimas 60 checagens)</h3>
-          <div class="github-history-bar" id="detail-history-bar" style="margin-bottom: 32px; height: 32px;"></div>
-          <h3 style="margin-bottom: 8px; font-size: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 8px;">M&#233;tricas Detalhadas (&#218;ltimo Ping)</h3>
-          <div class="server-details-grid" id="detail-metrics-grid"></div>
-      </div>
-
-      <!-- VIEW: SSH MONITOR -->
-      <div id="view-ssh" class="view-section">
-          <div class="ssh-add-form">
-              <p class="ssh-form-title">Adicionar Servidor SSH</p>
-              <div class="ssh-form-row">
-                  <vscode-text-field id="ssh-label"    placeholder="Label (ex: Web Server)"></vscode-text-field>
-                  <vscode-text-field id="ssh-host"     placeholder="Host / IP *"></vscode-text-field>
-                  <vscode-text-field id="ssh-port"     placeholder="Porta (22)"></vscode-text-field>
-                  <vscode-text-field id="ssh-user"     placeholder="Usu&#225;rio *"></vscode-text-field>
-                  <vscode-text-field id="ssh-pass"     placeholder="Senha *" type="password"></vscode-text-field>
-                  <vscode-dropdown id="ssh-os">
-                      <vscode-option value="linux">Linux</vscode-option>
-                      <vscode-option value="windows">Windows</vscode-option>
-                  </vscode-dropdown>
-                  <vscode-button appearance="primary" id="btn-add-ssh">Conectar</vscode-button>
-              </div>
-          </div>
-          <div id="ssh-cards-container" class="ssh-cards-grid"></div>
-      </div>
-
-      <!-- VIEW: DOCKER CONTAINERS -->
-      <div id="view-docker" class="view-section">
-          <div class="ssh-add-form">
-              <p class="ssh-form-title">Containers Docker (via SSH)</p>
-              <div class="docker-diag-toolbar">
-                  <div id="docker-summary" class="ssh-connecting-msg" style="margin-bottom:0;">Aguardando dados...</div>
-                  <vscode-text-field id="docker-search" placeholder="Buscar por container, imagem, stack ou host"></vscode-text-field>
-                  <vscode-button id="btn-docker-diagnose" appearance="secondary">Diagnóstico Docker</vscode-button>
-              </div>
-              <div id="docker-diagnostics-panel" class="docker-diag-panel"></div>
-          </div>
-          <div id="docker-cards-container"></div>
-          <div id="docker-selected-container" class="docker-selected-panel"></div>
-          <!-- Modal for container details -->
-          <div id="docker-modal" class="modal">
-              <div class="modal-content">
-                  <span id="docker-modal-close" class="modal-close">&times;</span>
-                  <div id="docker-modal-content"></div>
-              </div>
-          </div>
-      </div>
-
-      <script>
           const vscode = acquireVsCodeApi();
 
           // HTTP state
@@ -287,7 +178,7 @@ export function createInterface(): string {
                   ];
                   metrics.forEach(function(m) { metricsHtml += '<div class="detail-card"><span class="label">' + m.l + '</span><span class="value">' + m.v + '</span></div>'; });
               } else {
-                  metricsHtml = '<div style="color:var(--muted)">Dados do ping ainda n\u00e3o est\u00e3o dispon\u00edveis.</div>';
+                  metricsHtml = '<div style="color:var(--muted)">Dados do ping ainda não estão disponíveis.</div>';
               }
               document.getElementById('detail-metrics-grid').innerHTML = metricsHtml;
               document.getElementById('view-dashboard').classList.remove('active');
@@ -306,7 +197,7 @@ export function createInterface(): string {
               }
               var total = serversData.length, online = 0, offline = 0;
               if (total === 0) {
-                  container.innerHTML = '<div class="empty-state">Nenhum servidor monitorado.<br/>Por favor, adicione um site acima para come\u00e7ar.</div>';
+                  container.innerHTML = '<div class="empty-state">Nenhum servidor monitorado.<br/>Por favor, adicione um site acima para começar.</div>';
                   var statTotal = document.getElementById('stat-total');
                   var statOnline = document.getElementById('stat-online');
                   var statOffline = document.getElementById('stat-offline');
@@ -327,12 +218,12 @@ export function createInterface(): string {
                   var canvasId = 'chart-' + server.id;
                   var pingTime = server.lastPing ? server.lastPing.totalResponseTime + 'ms' : '-';
                   var checkedStr = '-';
-                  if (server.lastChecked) { var s = Math.floor((Date.now() - server.lastChecked) / 1000); checkedStr = s < 60 ? s + 's atr\u00e1s' : Math.floor(s / 60) + 'm atr\u00e1s'; }
-                  html += '<div class="server-card" onclick="showDetails(\\\'' + server.id + '\\\')">'
-                      + '<div class="card-actions" onclick="event.stopPropagation()"><div class="action-btn delete" onclick="removeServer(\\\'' + server.id + '\\\',event)" title="Excluir"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 3H11V2C11 1.447 10.553 1 10 1H6C5.447 1 5 1.447 5 2V3H2V4H3V14C3 14.553 3.447 15 4 15H12C12.553 15 13 14.553 13 14V4H14V3ZM6 2H10V3H6V2ZM12 14H4V4H12V14ZM6 6H7V12H6V6ZM9 6H10V12H9V6Z"/></svg></div></div>'
+                  if (server.lastChecked) { var s = Math.floor((Date.now() - server.lastChecked) / 1000); checkedStr = s < 60 ? s + 's atrás' : Math.floor(s / 60) + 'm atrás'; }
+                  html += '<div class="server-card" onclick="showDetails(\'' + server.id + '\')">'
+                      + '<div class="card-actions" onclick="event.stopPropagation()"><div class="action-btn delete" onclick="removeServer(\'' + server.id + '\',event)" title="Excluir"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 3H11V2C11 1.447 10.553 1 10 1H6C5.447 1 5 1.447 5 2V3H2V4H3V14C3 14.553 3.447 15 4 15H12C12.553 15 13 14.553 13 14V4H14V3ZM6 2H10V3H6V2ZM12 14H4V4H12V14ZM6 6H7V12H6V6ZM9 6H10V12H9V6Z"/></svg></div></div>'
                       + '<div class="card-header"><div class="card-title-group" title="' + server.url + '"><div class="status-dot ' + server.status + ' ' + dotAnimClass + '"></div><h3 class="card-title">' + server.url + '</h3></div><div class="uptime-badge" style="color:' + uptimeColor + '">' + uptime + '%</div></div>'
-                      + '<div class="card-body"><div class="mini-chart-container"><canvas id="' + canvasId + '"></canvas></div><div class="github-history-bar" title="' + '\u00daltimas 24 verifica\u00e7\u00f5es' + '">' + generateHistoryBarHtml(server.history) + '</div></div>'
-                      + '<div class="card-footer"><div class="footer-metric"><span class="label">\u00daltimo Ping</span><span class="value">' + pingTime + '</span></div><div class="footer-metric"><span class="label">\u00daltima Check</span><span class="value">' + checkedStr + '</span></div><div class="footer-metric"><span class="label">Pr\u00f3xima Verifica\u00e7\u00e3o</span><span class="value countdown-val" data-last="' + (server.lastChecked || 0) + '" data-interval="' + (server.status === 'offline' ? HTTP_CHECK_INTERVAL_OFFLINE_SECONDS : HTTP_CHECK_INTERVAL_ONLINE_SECONDS) + '">' + _countdownText(server.lastChecked || 0, server.status === 'offline' ? HTTP_CHECK_INTERVAL_OFFLINE_SECONDS : HTTP_CHECK_INTERVAL_ONLINE_SECONDS) + '</span></div></div>'
+                      + '<div class="card-body"><div class="mini-chart-container"><canvas id="' + canvasId + '"></canvas></div><div class="github-history-bar" title="' + 'Últimas 24 verificações' + '">' + generateHistoryBarHtml(server.history) + '</div></div>'
+                      + '<div class="card-footer"><div class="footer-metric"><span class="label">Último Ping</span><span class="value">' + pingTime + '</span></div><div class="footer-metric"><span class="label">Última Check</span><span class="value">' + checkedStr + '</span></div><div class="footer-metric"><span class="label">Próxima Verificação</span><span class="value countdown-val" data-last="' + (server.lastChecked || 0) + '" data-interval="' + (server.status === 'offline' ? HTTP_CHECK_INTERVAL_OFFLINE_SECONDS : HTTP_CHECK_INTERVAL_ONLINE_SECONDS) + '">' + _countdownText(server.lastChecked || 0, server.status === 'offline' ? HTTP_CHECK_INTERVAL_OFFLINE_SECONDS : HTTP_CHECK_INTERVAL_ONLINE_SECONDS) + '</span></div></div>'
                       + '</div>';
               });
               container.innerHTML = html;
@@ -439,10 +330,10 @@ export function createInterface(): string {
                   // Removes host bind prefixes like 0.0.0.0:8080-> and [::]:8080->
                   // while keeping the exposed container port info.
                   var out = p
-                      .replace(/^0\.0\.0\.0:\d+->/, '')
-                      .replace(/^\[::\]:\d+->/, '')
-                      .replace(/,?\s*0\.0\.0\.0:/g, '')
-                      .replace(/,?\s*\[::\]:/g, '')
+                      .replace(/^0.0.0.0:d+->/, '')
+                      .replace(/^[::]:d+->/, '')
+                      .replace(/,?s*0.0.0.0:/g, '')
+                      .replace(/,?s*[::]:/g, '')
                       .trim();
                   return out || p;
               });
@@ -680,7 +571,7 @@ export function createInterface(): string {
               modalTerminalRunning = false;
               if (modalTerminalInstance) {
                   try {
-                      modalTerminalInstance.write('\\r\\n\\r\\n[Sessão encerrada]\\r\\n');
+                      modalTerminalInstance.write('\r\n\r\n[Sessão encerrada]\r\n');
                   } catch (e) { /* ignore */ }
               }
               modalTerminalKey = null;
@@ -688,10 +579,10 @@ export function createInterface(): string {
 
           function _dockerActionButtons(serverId, containerId) {
               return '<div class="docker-actions" onclick="event.stopPropagation();">'
-                  + '<div class="docker-btn" title="Play" onclick="dockerContainerAction(\\\'' + serverId + '\\\',\\\'' + containerId + '\\\',\\\'play\\\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></div>'
-                  + '<div class="docker-btn" title="Pause" onclick="dockerContainerAction(\\\'' + serverId + '\\\',\\\'' + containerId + '\\\',\\\'pause\\\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h3v14H8zm5 0h3v14h-3z"></path></svg></div>'
-                  + '<div class="docker-btn" title="Stop" onclick="dockerContainerAction(\\\'' + serverId + '\\\',\\\'' + containerId + '\\\',\\\'stop\\\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10v10H7z"></path></svg></div>'
-                  + '<div class="docker-btn danger" title="Recreate" onclick="dockerContainerAction(\\\'' + serverId + '\\\',\\\'' + containerId + '\\\',\\\'recreate\\\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35A7.95 7.95 0 0 0 12 4V1L7 6l5 5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 12.65-5.65z"></path></svg></div>'
+                  + '<div class="docker-btn" title="Play" onclick="dockerContainerAction(\'' + serverId + '\',\'' + containerId + '\',\'play\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></div>'
+                  + '<div class="docker-btn" title="Pause" onclick="dockerContainerAction(\'' + serverId + '\',\'' + containerId + '\',\'pause\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h3v14H8zm5 0h3v14h-3z"></path></svg></div>'
+                  + '<div class="docker-btn" title="Stop" onclick="dockerContainerAction(\'' + serverId + '\',\'' + containerId + '\',\'stop\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10v10H7z"></path></svg></div>'
+                  + '<div class="docker-btn danger" title="Recreate" onclick="dockerContainerAction(\'' + serverId + '\',\'' + containerId + '\',\'recreate\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35A7.95 7.95 0 0 0 12 4V1L7 6l5 5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 12.65-5.65z"></path></svg></div>'
               + '</div>';
           }
 
@@ -705,7 +596,7 @@ export function createInterface(): string {
               var networkText = (c.networkRxBytes != null ? _fmtBytes(c.networkRxBytes) : '0 B') + ' / ' +
                   (c.networkTxBytes != null ? _fmtBytes(c.networkTxBytes) : '0 B');
 
-              return '<div class="docker-container-card ' + (isSelected ? 'selected' : '') + '" onclick="selectDockerContainer(\\\'' + row.serverId + '\\\',\\\'' + c.id + '\\\')">'
+              return '<div class="docker-container-card ' + (isSelected ? 'selected' : '') + '" onclick="selectDockerContainer(\'' + row.serverId + '\',\'' + c.id + '\')">'
                   + '<div class="docker-container-card-header">'
                       + '<div>'
                           + '<div class="docker-container-name">' + _esc(c.name) + '</div>'
@@ -828,7 +719,7 @@ export function createInterface(): string {
                       var img = _esc(c.image || '-');
                       var portsText = _esc(_fmtDockerPorts(c.ports));
 
-                      out += '<div class="docker-tile ' + statusClass + (isSelected ? ' selected' : '') + '" onclick="selectDockerContainer(\\\'' + row.serverId + '\\\',\\\'' + c.id + '\\\')" title="' + name + '">'
+                      out += '<div class="docker-tile ' + statusClass + (isSelected ? ' selected' : '') + '" onclick="selectDockerContainer(\'' + row.serverId + '\',\'' + c.id + '\')" title="' + name + '">'
                           + '<div class="tile-top"><div class="tile-name">' + name + '</div><div class="tile-id">' + shortId + '</div></div>'
                           + '<div class="tile-mid">' + img + '</div>'
                           + '<div class="tile-bottom"><span class="tile-ports">' + portsText + '</span></div>'
@@ -961,7 +852,7 @@ export function createInterface(): string {
 
               var procsHtml = '';
               if (m.processes && m.processes.length) {
-                  procsHtml = '<div class="ssh-procs-section"><div class="ssh-section-title">Top Processos (por CPU)</div><table class="proc-table"><thead><tr><th>PID</th><th>Usu\u00e1rio</th><th>CPU%</th><th>MEM%</th><th>Comando</th></tr></thead><tbody>';
+                  procsHtml = '<div class="ssh-procs-section"><div class="ssh-section-title">Top Processos (por CPU)</div><table class="proc-table"><thead><tr><th>PID</th><th>Usuário</th><th>CPU%</th><th>MEM%</th><th>Comando</th></tr></thead><tbody>';
                   m.processes.slice(0, 10).forEach(function(p) {
                       var cpuClass = p.cpuPercent > 50 ? 'high-usage' : p.cpuPercent > 20 ? 'mid-usage' : '';
                       procsHtml += '<tr><td>' + p.pid + '</td><td>' + _esc(p.user) + '</td><td class="' + cpuClass + '">' + p.cpuPercent.toFixed(1) + '</td><td>' + p.memPercent.toFixed(1) + '</td><td class="proc-cmd" title="' + _esc(p.command) + '">' + _esc(p.command) + '</td></tr>';
@@ -976,11 +867,11 @@ export function createInterface(): string {
               var nextCheckHtml = m.status === 'connected' || m.status === 'error' || m.status === 'disconnected'
                   ? '<div class="ssh-updated-at js-ssh-next-check">Próxima checagem: <strong class="countdown-ssh" data-last="' + (m.timestamp || 0) + '" data-interval="' + sshIntervalSeconds + '">' + _countdownText(m.timestamp || 0, sshIntervalSeconds) + '</strong></div>'
                   : '';
-              var errHtml = m.status === 'error' ? '<div class="ssh-error-msg">&#9888;&#65039; ' + _esc(m.errorMessage || 'Erro de conex\u00e3o') + '</div>' : '';
-              var connHtml = m.status === 'connecting' ? '<div class="ssh-connecting-msg">&#128260; Estabelecendo conex\u00e3o SSH...</div>' : '';
-              var loadingHtml = isLoadingMetrics ? '<div class="ssh-loading-metrics"><span class="ssh-spinner"></span>Coletando m\u00e9tricas...</div>' : '';
-              var terminalBtn = '<vscode-button appearance="secondary" onclick="openSshTerminal(\\\'' + m.id + '\\\')">Abrir Terminal SSH</vscode-button>';
-              var deleteBtn = '<div class="action-btn delete" onclick="removeSshServer(\\\'' + m.id + '\\\')" title="Remover"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 3H11V2C11 1.447 10.553 1 10 1H6C5.447 1 5 1.447 5 2V3H2V4H3V14C3 14.553 3.447 15 4 15H12C12.553 15 13 14.553 13 14V4H14V3ZM6 2H10V3H6V2ZM12 14H4V4H12V14ZM6 6H7V12H6V6ZM9 6H10V12H9V6Z"/></svg></div>';
+              var errHtml = m.status === 'error' ? '<div class="ssh-error-msg">&#9888;&#65039; ' + _esc(m.errorMessage || 'Erro de conexão') + '</div>' : '';
+              var connHtml = m.status === 'connecting' ? '<div class="ssh-connecting-msg">&#128260; Estabelecendo conexão SSH...</div>' : '';
+              var loadingHtml = isLoadingMetrics ? '<div class="ssh-loading-metrics"><span class="ssh-spinner"></span>Coletando métricas...</div>' : '';
+              var terminalBtn = '<vscode-button appearance="secondary" onclick="openSshTerminal(\'' + m.id + '\')">Abrir Terminal SSH</vscode-button>';
+              var deleteBtn = '<div class="action-btn delete" onclick="removeSshServer(\'' + m.id + '\')" title="Remover"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 3H11V2C11 1.447 10.553 1 10 1H6C5.447 1 5 1.447 5 2V3H2V4H3V14C3 14.553 3.447 15 4 15H12C12.553 15 13 14.553 13 14V4H14V3ZM6 2H10V3H6V2ZM12 14H4V4H12V14ZM6 6H7V12H6V6ZM9 6H10V12H9V6Z"/></svg></div>';
 
               return '<div class="ssh-server-card" data-id="' + m.id + '">'
                   + '<div class="ssh-card-header">'
@@ -1018,7 +909,7 @@ export function createInterface(): string {
               if (!container) return;
 
               if (sshData.length === 0) {
-                  container.innerHTML = '<div class="empty-state">Nenhum servidor SSH adicionado.<br/>Preencha o formul\u00e1rio acima para conectar ao primeiro servidor.</div>';
+                  container.innerHTML = '<div class="empty-state">Nenhum servidor SSH adicionado.<br/>Preencha o formulário acima para conectar ao primeiro servidor.</div>';
                   return;
               }
 
@@ -1097,7 +988,7 @@ export function createInterface(): string {
               var username = userEl.value.trim();
               var password = passEl.value;
               var osType   = osEl ? osEl.value : 'linux';
-              if (!host || !username || !password) { alert('Host, Usu\u00e1rio e Senha s\u00e3o obrigat\u00f3rios.'); return; }
+              if (!host || !username || !password) { alert('Host, Usuário e Senha são obrigatórios.'); return; }
               vscode.postMessage({ type: 'addSshServer', label: label, host: host, port: port || '22', username: username, password: password, osType: osType });
               labelEl.value = '';
               hostEl.value  = '';
@@ -1284,8 +1175,4 @@ export function createInterface(): string {
           window.selectDockerContainer = selectDockerContainer;
           window.runDockerDiagnostics = runDockerDiagnostics;
 
-      </script>
-  </body>
-  </html>
-  `;
-}
+      

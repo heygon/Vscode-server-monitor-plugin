@@ -27,25 +27,18 @@ const METRICS_CMD_LINUX = [
     "awk '{printf \"ENERGY %.2fW\\n\",$1/1000000}') 2>/dev/null || echo 'ENERGY N/A'",
 ].join("; ");
 
-const DOCKER_CMD_LINUX = [
-  "export PATH=\"$PATH:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/snap/bin:/opt/homebrew/bin\"; " +
-    "D=''; " +
-    "if command -v docker >/dev/null 2>&1; then D='docker'; " +
-    "elif [ -x /usr/bin/docker ]; then D='/usr/bin/docker'; " +
-    "elif [ -x /usr/local/bin/docker ]; then D='/usr/local/bin/docker'; " +
-    "elif [ -x /snap/bin/docker ]; then D='/snap/bin/docker'; " +
-    "elif command -v sudo >/dev/null 2>&1; then " +
-      "if sudo -n docker version >/dev/null 2>&1; then D='sudo -n docker'; " +
-      "elif [ -x /usr/bin/docker ] && sudo -n /usr/bin/docker version >/dev/null 2>&1; then D='sudo -n /usr/bin/docker'; fi; " +
-    "fi; " +
-    "if [ -z \"$D\" ]; then echo DOCKER_UNAVAILABLE; else " +
-    "echo DOCKER_AVAILABLE; " +
-    "eval \"$D ps -a --size --format 'DOCKERPS|{{.ID}}|{{.Names}}|{{.Image}}|{{.Status}}|{{.Ports}}|{{.Size}}'\" 2>/dev/null || " +
-    "eval \"$D ps -a --format 'DOCKERPS|{{.ID}}|{{.Names}}|{{.Image}}|{{.Status}}|{{.Ports}}|-'\" 2>/dev/null || " +
-    "echo DOCKER_ERROR\|docker-ps-failed; " +
-    "eval \"$D stats --no-stream --format 'DOCKERST|{{.ID}}|{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}|{{.NetIO}}|{{.BlockIO}}|{{.PIDs}}'\" 2>/dev/null || true; " +
-    "fi",
-].join('; ');
+function buildLinuxDockerQueryCommand(dockerPrefix: string): string {
+  const psFormat = 'DOCKERPS|{{.ID}}|{{.Names}}|{{.Image}}|{{.Status}}|{{.Ports}}|{{.Size}}|-|-';
+  const psFormat2 = 'DOCKERPS|{{.ID}}|{{.Names}}|{{.Image}}|{{.Status}}|{{.Ports}}|-|-|-';
+  const stFormat = 'DOCKERST|{{.ID}}|{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}|{{.NetIO}}|{{.BlockIO}}|{{.PIDs}}';
+
+  return [
+    "export PATH=\"$PATH:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/snap/bin:/opt/homebrew/bin\"",
+    "echo DOCKER_AVAILABLE",
+    `if ${dockerPrefix} ps -a --size --format '${psFormat}' 2>/dev/null; then true; elif ${dockerPrefix} ps -a --format '${psFormat2}' 2>/dev/null; then true; else echo DOCKER_ERROR\\|docker-ps-failed; fi`,
+    `${dockerPrefix} stats --no-stream --format '${stFormat}' 2>/dev/null || true`,
+  ].join('; ');
+}
 
 // PowerShell command executed on the remote Windows host (via SSH / OpenSSH for Windows).
 // It is wrapped with an explicit powershell invocation so it works even if SSH default shell is CMD.
@@ -100,8 +93,8 @@ const DOCKER_WIN_DISCOVERY_PS = [
 
 const DOCKER_PS_SCRIPT_WINDOWS = [
   DOCKER_WIN_DISCOVERY_PS,
-  "$psfmt='DOCKERPS|{{.ID}}|{{.Names}}|{{.Image}}|{{.Status}}|{{.Ports}}|{{.Size}}'",
-  "$psfmt2='DOCKERPS|{{.ID}}|{{.Names}}|{{.Image}}|{{.Status}}|{{.Ports}}|-'",
+  "$psfmt='DOCKERPS|{{.ID}}|{{.Names}}|{{.Image}}|{{.Status}}|{{.Ports}}|{{.Size}}|-|-'",
+  "$psfmt2='DOCKERPS|{{.ID}}|{{.Names}}|{{.Image}}|{{.Status}}|{{.Ports}}|-|-|-'",
   "$stfmt='DOCKERST|{{.ID}}|{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}|{{.NetIO}}|{{.BlockIO}}|{{.PIDs}}'",
   "if ($mode -eq 'none') { Write-Output 'DOCKER_UNAVAILABLE' }",
   "if ($mode -ne 'none') { Write-Output 'DOCKER_AVAILABLE' }",
@@ -175,6 +168,10 @@ export type OnStatusChange = (id: string, status: SshConnectionStatus, errorMess
 export class SshMonitor {
   private onStatusChange?: OnStatusChange;
   private connections: Map<string, ConnectionEntry> = new Map();
+  // Active streams for container logs: key = `${serverId}:${containerId}`
+  private logStreams: Map<string, ClientChannel> = new Map();
+  // Active terminal PTY streams for container exec: key = `${serverId}:${containerId}`
+  private terminalStreams: Map<string, ClientChannel> = new Map();
 
   /**
    * Set a callback to be notified when SSH connection status changes.
@@ -298,7 +295,6 @@ export class SshMonitor {
     try {
       const isWindows = config.osType === 'windows';
       const baseCmd = isWindows ? METRICS_CMD_WINDOWS : METRICS_CMD_LINUX;
-      const dockerCmd = isWindows ? DOCKER_CMD_WINDOWS : DOCKER_CMD_LINUX;
 
       const baseOutput = await this._execCommand(entry.client, baseCmd);
       const baseParsed = parseMetricsOutput(baseOutput, isWindows);
@@ -310,15 +306,18 @@ export class SshMonitor {
       };
 
       try {
+        const dockerCmd = isWindows
+          ? DOCKER_CMD_WINDOWS
+          : buildLinuxDockerQueryCommand(await this.resolveLinuxDockerPrefix(entry.client, entry.password).catch(() => 'docker'));
         const dockerOutput = await this._execCommand(entry.client, dockerCmd);
         const dockerParsed = parseMetricsOutput(dockerOutput, isWindows);
         if (dockerParsed.docker) {
           dockerInfo = dockerParsed.docker;
         }
-      } catch {
+      } catch (err: any) {
         dockerInfo = {
           available: false,
-          errorMessage: 'Falha ao consultar Docker',
+          errorMessage: err?.message || 'Falha ao consultar Docker',
           containers: [],
         };
       }
@@ -394,20 +393,140 @@ export class SshMonitor {
       command = `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "${psScript.replace(/"/g, '\\"')}"`;
     } else {
       // Linux / macOS path
+      const dockerPrefix = await this.resolveLinuxDockerPrefix(entry.client, entry.password);
       if (action === 'stop') {
-        command = `docker stop ${safeRef}`;
+        command = `${dockerPrefix} stop ${safeRef}`;
       } else if (action === 'pause') {
-        command = `docker pause ${safeRef}`;
+        command = `${dockerPrefix} pause ${safeRef}`;
       } else if (action === 'play') {
-        command = `docker unpause ${safeRef} >/dev/null 2>&1 || docker start ${safeRef}`;
+        command = `${dockerPrefix} unpause ${safeRef} >/dev/null 2>&1 || ${dockerPrefix} start ${safeRef}`;
       } else if (action === 'recreate') {
-        command = `docker restart ${safeRef}`;
+        command = `${dockerPrefix} restart ${safeRef}`;
       } else {
         throw new Error('Ação de container não suportada');
       }
     }
 
     await this._execCommand(entry.client, command);
+  }
+
+  /** Starts streaming `docker logs -f` for a container. Calls onData for each chunk. */
+  async startContainerLogs(config: SshServerConfig, containerId: string, tail = 200, onData?: (chunk: string) => void, onClose?: () => void): Promise<void> {
+    const entry = this.connections.get(config.id);
+    if (!entry || entry.status !== 'connected') {
+      throw new Error('Servidor SSH não está conectado');
+    }
+
+    const key = `${config.id}:${containerId}`;
+    if (this.logStreams.has(key)) return; // already running
+
+    const isWindows = config.osType === 'windows';
+    let command = '';
+    if (isWindows) {
+      // Try simple docker logs command in PowerShell; discovery already used elsewhere may be required for robustness
+      command = `docker logs -f --tail ${Number(tail || 200)} ${containerId}`;
+    } else {
+      const dockerPrefix = await this.resolveLinuxDockerPrefix(entry.client, entry.password).catch(() => 'docker');
+      command = `${dockerPrefix} logs -f --tail ${Number(tail || 200)} ${containerId}`;
+    }
+
+    entry.client.exec(command, (err, stream) => {
+      if (err) {
+        if (onData) onData(`ERROR: ${err.message}\n`);
+        return;
+      }
+
+      this.logStreams.set(key, stream);
+
+      stream.on('data', (chunk: Buffer) => {
+        try { if (onData) onData(chunk.toString('utf8')); } catch (e) { /* ignore */ }
+      });
+      stream.stderr.on('data', (chunk: Buffer) => { try { if (onData) onData(chunk.toString('utf8')); } catch (e) { } });
+      stream.on('close', () => { this.logStreams.delete(key); if (onClose) onClose(); });
+      stream.on('error', () => { this.logStreams.delete(key); if (onClose) onClose(); });
+    });
+  }
+
+  stopContainerLogs(serverId: string, containerId: string): void {
+    const key = `${serverId}:${containerId}`;
+    const st = this.logStreams.get(key);
+    if (st) {
+      try { st.close(); } catch (_) { try { st.end(); } catch (_) { } }
+      this.logStreams.delete(key);
+    }
+  }
+
+  /** Start an interactive terminal inside the container (docker exec -it). onData will be called for output. */
+  async startContainerTerminal(config: SshServerConfig, containerId: string, onData?: (data: string) => void, onClose?: () => void): Promise<void> {
+    const entry = this.connections.get(config.id);
+    if (!entry || entry.status !== 'connected') {
+      throw new Error('Servidor SSH não está conectado');
+    }
+
+    const safeRef = sanitizeContainerRef(containerId);
+    if (!safeRef) {
+      throw new Error('ID/nome do container inválido');
+    }
+
+    const key = `${config.id}:${containerId}`;
+    if (this.terminalStreams.has(key)) return; // already running
+
+    const isWindows = config.osType === 'windows';
+    let command = '';
+    if (isWindows) {
+      // Host OS being Windows does not imply a Windows container.
+      // Try Linux shell first, then fall back to Windows shells.
+      const psScript = [
+        DOCKER_WIN_DISCOVERY_PS,
+        "$linuxCmd='(command -v bash >/dev/null 2>&1 && exec bash -i) || exec sh -i'",
+        `if ($mode -eq 'direct') { & $de exec -it ${safeRef} sh -lc $linuxCmd; if ($LASTEXITCODE -eq 0) { exit 0 }; & $de exec -it ${safeRef} powershell.exe -NoLogo 2>$null; if ($LASTEXITCODE -eq 0) { exit 0 }; & $de exec -it ${safeRef} cmd.exe; exit $LASTEXITCODE }`,
+        `if ($mode -eq 'pipe') { & $de -H $dh exec -it ${safeRef} sh -lc $linuxCmd; if ($LASTEXITCODE -eq 0) { exit 0 }; & $de -H $dh exec -it ${safeRef} powershell.exe -NoLogo 2>$null; if ($LASTEXITCODE -eq 0) { exit 0 }; & $de -H $dh exec -it ${safeRef} cmd.exe; exit $LASTEXITCODE }`,
+        `if ($mode -eq 'wsl') { wsl -e docker exec -it ${safeRef} sh -lc $linuxCmd; if ($LASTEXITCODE -eq 0) { exit 0 }; wsl -e docker exec -it ${safeRef} powershell.exe -NoLogo 2>$null; if ($LASTEXITCODE -eq 0) { exit 0 }; wsl -e docker exec -it ${safeRef} cmd.exe; exit $LASTEXITCODE }`,
+        "if ($mode -eq 'none') { Write-Error 'Docker indisponivel' }",
+      ].join('; ');
+      command = `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "${psScript.replace(/"/g, '\\"')}"`;
+    } else {
+      const dockerPrefix = await this.resolveLinuxDockerPrefix(entry.client, entry.password).catch(() => 'docker');
+      // Force an interactive shell so the session stays open.
+      command = `${dockerPrefix} exec -it ${safeRef} sh -c '(command -v bash >/dev/null 2>&1 && exec bash -i) || exec sh -i'`;
+    }
+
+    // Request a pty for interactive terminal
+    entry.client.exec(command, { pty: { term: 'xterm-256color', cols: 120, rows: 30 } }, (err, stream) => {
+      if (err) {
+        if (onData) onData(`ERROR: ${err.message}\n`);
+        if (onClose) onClose();
+        return;
+      }
+
+      this.terminalStreams.set(key, stream);
+
+      stream.on('data', (chunk: Buffer) => { try { if (onData) onData(chunk.toString('utf8')); } catch (e) { } });
+      stream.stderr.on('data', (chunk: Buffer) => { try { if (onData) onData(chunk.toString('utf8')); } catch (e) { } });
+      stream.on('close', () => { this.terminalStreams.delete(key); if (onClose) onClose(); });
+      stream.on('exit', () => { this.terminalStreams.delete(key); if (onClose) onClose(); });
+      stream.on('error', () => { this.terminalStreams.delete(key); if (onClose) onClose(); });
+
+      // expose a write method on the stream
+      // Note: stream.write accepts Buffer|string
+    });
+  }
+
+  writeContainerTerminalInput(serverId: string, containerId: string, data: string): void {
+    const key = `${serverId}:${containerId}`;
+    const st = this.terminalStreams.get(key);
+    if (st) {
+      try { st.write(data); } catch (e) { /* ignore */ }
+    }
+  }
+
+  stopContainerTerminal(serverId: string, containerId: string): void {
+    const key = `${serverId}:${containerId}`;
+    const st = this.terminalStreams.get(key);
+    if (st) {
+      try { st.close(); } catch (_) { try { st.end(); } catch (_) { } }
+      this.terminalStreams.delete(key);
+    }
   }
 
   async diagnoseDocker(config: SshServerConfig): Promise<string> {
@@ -434,12 +553,54 @@ export class SshMonitor {
         }
 
         let output = '';
+        let stderrOutput = '';
         stream.on('data', (data: Buffer) => { output += data.toString(); });
-        stream.stderr.on('data', (_data: Buffer) => { /* ignore */ });
-        stream.on('close', () => { clearTimeout(timer); resolve(output); });
+        stream.stderr.on('data', (data: Buffer) => { stderrOutput += data.toString(); });
+        stream.on('close', () => { 
+          clearTimeout(timer); 
+          resolve(output || stderrOutput); 
+        });
         stream.on('error', (e: Error) => { clearTimeout(timer); reject(e); });
       });
     });
+  }
+
+  private async resolveLinuxDockerPrefix(client: Client, password: string): Promise<string> {
+    const escapedPassword = shellSingleQuote(password || '');
+    const cmd = [
+      "export PATH=\"$PATH:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/snap/bin:/opt/homebrew/bin\"",
+      "D='docker'",
+      "if ! command -v docker >/dev/null 2>&1; then",
+      "  if [ -x /usr/bin/docker ]; then D='/usr/bin/docker';",
+      "  elif [ -x /usr/local/bin/docker ]; then D='/usr/local/bin/docker';",
+      "  elif [ -x /snap/bin/docker ]; then D='/snap/bin/docker';",
+      "  else echo NONE; exit 0; fi",
+      'fi',
+      "if $D ps -a >/dev/null 2>&1; then echo DIRECT:$D; exit 0; fi",
+      "if command -v sudo >/dev/null 2>&1 && sudo -n $D ps -a >/dev/null 2>&1; then echo SUDO_N:$D; exit 0; fi",
+      "if command -v sudo >/dev/null 2>&1 && [ -n '" + escapedPassword + "' ] && printf '%s\\n' '" + escapedPassword + "' | sudo -S -p '' $D ps -a >/dev/null 2>&1; then echo SUDO_P:$D; exit 0; fi",
+      'echo NONE',
+    ].join('; ');
+
+    const output = (await this._execCommand(client, cmd)).trim();
+    const marker = output
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .find((line) => line.startsWith('DIRECT:') || line.startsWith('SUDO_N:') || line.startsWith('SUDO_P:') || line === 'NONE');
+
+    if (marker && marker.startsWith('DIRECT:')) {
+      return marker.slice('DIRECT:'.length).trim() || 'docker';
+    }
+    if (marker && marker.startsWith('SUDO_N:')) {
+      const dockerPath = marker.slice('SUDO_N:'.length).trim() || 'docker';
+      return `sudo -n ${dockerPath}`;
+    }
+    if (marker && marker.startsWith('SUDO_P:')) {
+      const dockerPath = marker.slice('SUDO_P:'.length).trim() || 'docker';
+      return `printf '%s\\n' '${escapedPassword}' | sudo -S -p '' ${dockerPath}`;
+    }
+    throw new Error('Docker indisponível no host Linux (sem permissão de execução)');
   }
 }
 
@@ -492,8 +653,18 @@ function parseMetricsOutput(raw: string, isWindows = false): Partial<SshServerMe
     } else if (line.startsWith('NET ')) {
       // Linux:   NET rx1 tx1 | rx2 tx2
       // Windows: NET rxBytesPerSec txBytesPerSec
-      if (!isWindows) {
-        const m = line.match(/^NET (\d+) (\d+) \| (\d+) (\d+)$/);
+      if (isWindows) {
+        const parts = line.split(' ');
+        if (parts.length >= 3) {
+          const rx = parseFloat(parts[1]) || 0;
+          const tx = parseFloat(parts[2]) || 0;
+          network = {
+            downloadBytesPerSec: Math.max(0, Math.round(rx)),
+            uploadBytesPerSec: Math.max(0, Math.round(tx)),
+          };
+        }
+      } else {
+        const m = line.match(/^NET (\d+) (\d+) \| (\d+) (\d+)/);
         if (m) {
           const rx1 = parseInt(m[1], 10);
           const tx1 = parseInt(m[2], 10);
@@ -502,14 +673,6 @@ function parseMetricsOutput(raw: string, isWindows = false): Partial<SshServerMe
           network = {
             downloadBytesPerSec: Math.max(0, (rx2 - rx1) * 2),
             uploadBytesPerSec: Math.max(0, (tx2 - tx1) * 2),
-          };
-        }
-      } else {
-        const m = line.match(/^NET (\d+) (\d+)$/);
-        if (m) {
-          network = {
-            downloadBytesPerSec: Math.max(0, parseInt(m[1], 10) || 0),
-            uploadBytesPerSec: Math.max(0, parseInt(m[2], 10) || 0),
           };
         }
       }
@@ -581,15 +744,17 @@ function parseMetricsOutput(raw: string, isWindows = false): Partial<SshServerMe
     } else if (line.startsWith('DOCKERPS|')) {
       dockerSeen = true;
       const parts = line.split('|');
-      if (parts.length >= 7) {
+      if (parts.length >= 9) {
         const id = parts[1];
+        const name = parts[2] || id;
         dockerById.set(id, {
           id,
-          name: parts[2] || id,
+          name,
           image: parts[3] || '-',
           status: parts[4] || '-',
           ports: parts[5] || '-',
           size: parts[6] || '-',
+          stack: resolveDockerStackName(parts[7], parts[8], name),
         });
       }
 
@@ -649,6 +814,38 @@ function sanitizeContainerRef(value: string): string {
   if (!value) { return ''; }
   const trimmed = value.trim();
   return /^[a-zA-Z0-9_.-]+$/.test(trimmed) ? trimmed : '';
+}
+
+function shellSingleQuote(value: string): string {
+  return String(value || '').replace(/'/g, `'"'"'`);
+}
+
+function resolveDockerStackName(composeLabel: string, swarmLabel: string, containerName: string): string {
+  const compose = (composeLabel || '').trim();
+  if (compose) { return compose; }
+
+  const swarm = (swarmLabel || '').trim();
+  if (swarm) { return swarm; }
+
+  const inferred = inferStackFromContainerName(containerName);
+  return inferred || '';
+}
+
+function inferStackFromContainerName(containerName: string): string {
+  const name = (containerName || '').trim();
+  if (!name) { return ''; }
+
+  const composeLike = name.match(/^([a-zA-Z0-9][a-zA-Z0-9_.-]*)_[a-zA-Z0-9][a-zA-Z0-9_.-]*_\d+$/);
+  if (composeLike) {
+    return composeLike[1];
+  }
+
+  const swarmLike = name.match(/^([a-zA-Z0-9][a-zA-Z0-9_.-]*)_([a-zA-Z0-9][a-zA-Z0-9_.-]*)\.[a-zA-Z0-9]+\.[a-zA-Z0-9]+$/);
+  if (swarmLike) {
+    return swarmLike[1];
+  }
+
+  return '';
 }
 
 function parsePercent(value: string): number {

@@ -64,6 +64,7 @@ export interface DockerContainerMetrics {
   image: string;
   status: string;
   ports: string;
+  stack?: string;
   size?: string;
   cpuPercent?: number;
   memoryUsageBytes?: number;
